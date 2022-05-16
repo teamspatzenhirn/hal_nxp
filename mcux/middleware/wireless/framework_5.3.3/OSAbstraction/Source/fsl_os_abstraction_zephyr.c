@@ -1,5 +1,5 @@
-#include <zephyr.h>
-#include <irq.h>
+#include <zephyr/kernel.h>
+#include <zephyr/irq.h>
 #include <soc.h>
 
 #include "fsl_os_abstraction.h"
