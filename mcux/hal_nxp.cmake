@@ -92,6 +92,7 @@ include_driver_ifdef(CONFIG_DMA_MCUX_EDMA		edma		driver_edma)
 include_driver_ifdef(CONFIG_DMA_MCUX_EDMA		dmamux		driver_dmamux)
 include_driver_ifdef(CONFIG_ENTROPY_MCUX_RNGA		rnga		driver_rnga)
 include_driver_ifdef(CONFIG_ENTROPY_MCUX_TRNG		trng		driver_trng)
+include_driver_ifdef(CONFIG_ENTROPY_MCUX_CAAM		caam		driver_caam)
 include_driver_ifdef(CONFIG_ETH_MCUX			enet		driver_enet)
 include_driver_ifdef(CONFIG_HAS_MCUX_SMC		smc		driver_smc)
 include_driver_ifdef(CONFIG_I2C_MCUX			i2c		driver_i2c)
@@ -183,7 +184,17 @@ if ((${MCUX_DEVICE} MATCHES "LPC8[0-9][0-9]") OR (${MCUX_DEVICE} MATCHES "LPC5(1
   include_driver_ifdef(CONFIG_SOC_FLASH_MCUX		iap		driver_iap)
   include_driver_ifdef(CONFIG_ENTROPY_MCUX_RNG		iap		driver_rng)
 elseif (${MCUX_DEVICE} MATCHES "LPC55")
-  include_driver_ifdef(CONFIG_SOC_FLASH_MCUX		iap1		driver_iap1)
+  if (${MCUX_DEVICE} MATCHES "LPC55S*3")
+   if(${CONFIG_SOC_FLASH_MCUX})
+      list(APPEND CMAKE_MODULE_PATH
+        ${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/devices/LPC55S36/drivers
+      )
+      zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/devices/LPC55S36/drivers/flash)
+      include(driver_flashiap)
+    endif()
+  else()
+    include_driver_ifdef(CONFIG_SOC_FLASH_MCUX		iap1		driver_iap1)
+  endif()
   include_driver_ifdef(CONFIG_ENTROPY_MCUX_RNG		rng_1		driver_rng_1)
 endif()
 
@@ -277,4 +288,17 @@ if(CONFIG_ETH_MCUX)
 
   zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/components/phy/mdio/enet)
   zephyr_library_sources(mcux-sdk/components/phy/mdio/enet/fsl_enet_mdio.c)
+endif()
+
+if (CONFIG_USB_DEVICE_DRIVER)
+  list(APPEND CMAKE_MODULE_PATH
+    ${CMAKE_CURRENT_LIST_DIR}/middleware/mcux-sdk-middleware-usb
+  )
+  include(middleware_usb_phy)
+  include_ifdef(CONFIG_USB_DC_NXP_EHCI         middleware_usb_device_ehci)
+  include_ifdef(CONFIG_USB_DC_NXP_LPCIP3511    middleware_usb_device_ip3511fs)
+
+  zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/middleware/mcux-sdk-middleware-usb/device)
+  zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/middleware/mcux-sdk-middleware-usb/phy)
+  zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/middleware/mcux-sdk-middleware-usb/include)
 endif()
