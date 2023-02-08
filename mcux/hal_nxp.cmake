@@ -25,8 +25,9 @@ endfunction()
 message("Load components for ${MCUX_DEVICE}:")
 
 #specific operation to shared drivers
-if(CONFIG_FLASH_MCUX_FLEXSPI_XIP)
-  zephyr_code_relocate(${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/drivers/flexspi/fsl_flexspi.c ${CONFIG_FLASH_MCUX_FLEXSPI_XIP_MEM}_TEXT)
+if((DEFINED CONFIG_FLASH_MCUX_FLEXSPI_XIP) AND (DEFINED CONFIG_FLASH))
+  zephyr_code_relocate(FILES ${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/drivers/flexspi/fsl_flexspi.c
+    LOCATION ${CONFIG_FLASH_MCUX_FLEXSPI_XIP_MEM}_TEXT)
 endif()
 
 if(NOT CONFIG_ASSERT OR CONFIG_FORCE_NO_ASSERT)
@@ -44,8 +45,9 @@ zephyr_library_compile_definitions_ifdef(
 
 include(driver_common)
 
-#Include system_xxx file for MXRT platforms
+#Include system_xxx file
 #This can be extended to other SoC series if needed
+if (DEFINED CONFIG_PLATFORM_SPECIFIC_INIT OR DEFINED CONFIG_SOC_SERIES_IMX_RT6XX)
 if (CONFIG_SOC_MIMXRT1166_CM4)
 include(device_system_MIMXRT1166_cm4)
 elseif (CONFIG_SOC_MIMXRT1166_CM7)
@@ -54,8 +56,17 @@ elseif (CONFIG_SOC_MIMXRT1176_CM4)
 include(device_system_MIMXRT1176_cm4)
 elseif (CONFIG_SOC_MIMXRT1176_CM7)
 include(device_system_MIMXRT1176_cm7)
-elseif (CONFIG_SOC_SERIES_IMX_RT OR CONFIG_SOC_SERIES_IMX_RT6XX OR CONFIG_SOC_SERIES_IMX_RT5XX)
+elseif (CONFIG_SOC_LPC55S69_CPU0)
+include(device_system_LPC55S69_cm33_core0)
+elseif (CONFIG_SOC_LPC55S69_CPU1)
+include(device_system_LPC55S69_cm33_core1)
+elseif (CONFIG_SOC_LPC54114_M4)
+include(device_system_LPC54114_cm4)
+elseif (CONFIG_SOC_LPC54114_M0)
+include(device_system_LPC54114_cm0plus)
+else()
 include(device_system)
+endif()
 endif()
 
 zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/drivers/common)
@@ -84,6 +95,7 @@ include_driver_ifdef(CONFIG_ADC_MCUX_ADC12		adc12		driver_adc12)
 include_driver_ifdef(CONFIG_ADC_MCUX_ADC16		adc16		driver_adc16)
 include_driver_ifdef(CONFIG_IPM_IMX_REV2		mu		driver_mu)
 include_driver_ifdef(CONFIG_CAN_MCUX_FLEXCAN		flexcan		driver_flexcan)
+include_driver_ifdef(CONFIG_CAN_MCUX_FLEXCAN_FD		flexcan		driver_flexcan)
 include_driver_ifdef(CONFIG_COUNTER_MCUX_PIT		pit		driver_pit)
 include_driver_ifdef(CONFIG_COUNTER_MCUX_RTC		rtc		driver_rtc)
 include_driver_ifdef(CONFIG_DAC_MCUX_DAC		dac		driver_dac)
@@ -146,6 +158,7 @@ include_driver_ifdef(CONFIG_ADC_LPC_ADC			lpc_adc		driver_lpc_adc)
 include_driver_ifdef(CONFIG_MCUX_SDIF			sdif		driver_sdif)
 include_driver_ifdef(CONFIG_ADC_MCUX_ETC		adc_etc		driver_adc_etc)
 include_driver_ifdef(CONFIG_MCUX_XBARA			xbara		driver_xbara)
+include_driver_ifdef(CONFIG_QDEC_MCUX			enc		driver_enc)
 
 if ((${MCUX_DEVICE} MATCHES "MIMXRT1[0-9][0-9][0-9]") AND (NOT (CONFIG_SOC_MIMXRT1166_CM4 OR CONFIG_SOC_MIMXRT1176_CM4)))
   include_driver_ifdef(CONFIG_HAS_MCUX_CACHE		cache/armv7-m7	driver_cache_armv7_m7)
@@ -213,68 +226,6 @@ if(${MCUX_DEVICE} MATCHES "MIMXRT(5|6)")
   zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/drivers/lpc_iopctl)
 endif()
 
-#include macro definition
-zephyr_compile_definitions_ifdef(CONFIG_NXP_IMX_RT_BOOT_HEADER XIP_BOOT_HEADER_ENABLE=1)
-zephyr_compile_definitions_ifdef(CONFIG_NXP_IMX_RT6XX_BOOT_HEADER BOOT_HEADER_ENABLE=1)
-zephyr_compile_definitions_ifdef(CONFIG_NXP_IMX_RT5XX_BOOT_HEADER BOOT_HEADER_ENABLE=1)
-zephyr_compile_definitions_ifdef(CONFIG_DEVICE_CONFIGURATION_DATA XIP_BOOT_HEADER_DCD_ENABLE=1)
-zephyr_compile_definitions(BOARD_FLASH_SIZE=CONFIG_FLASH_SIZE*1024)
-
-if(CONFIG_BOARD_MIMXRT1010_EVK)
-  set(MCUX_BOARD evkmimxrt1010)
-elseif(CONFIG_BOARD_MIMXRT1015_EVK)
-  set(MCUX_BOARD evkmimxrt1015)
-elseif(CONFIG_BOARD_MIMXRT1020_EVK)
-  set(MCUX_BOARD evkmimxrt1020)
-elseif(CONFIG_BOARD_MIMXRT1024_EVK)
-  set(MCUX_BOARD evkmimxrt1024)
-elseif(CONFIG_BOARD_MIMXRT1050_EVK OR CONFIG_BOARD_MIMXRT1050_EVK_QSPI)
-  set(MCUX_BOARD evkbimxrt1050)
-if (CONFIG_BOARD_MIMXRT1050_EVK_QSPI)
-  set(MCUX_BOARD_MOD _qspi)
-endif()
-elseif(CONFIG_BOARD_MIMXRT1060_EVK OR CONFIG_BOARD_MIMXRT1060_EVK_HYPERFLASH)
-  set(MCUX_BOARD evkmimxrt1060)
-elseif(CONFIG_BOARD_MIMXRT1060_EVKB)
-  set(MCUX_BOARD evkbmimxrt1060)
-elseif(CONFIG_BOARD_MIMXRT1064_EVK)
-  set(MCUX_BOARD evkmimxrt1064)
-elseif(CONFIG_BOARD_MIMXRT595_EVK)
-  set(MCUX_BOARD evkmimxrt595)
-elseif(CONFIG_BOARD_MIMXRT685_EVK)
-  set(MCUX_BOARD evkmimxrt685)
-elseif(CONFIG_BOARD_MIMXRT1170_EVK_CM7 OR CONFIG_BOARD_MIMXRT1170_EVK_CM4)
-  set(MCUX_BOARD evkmimxrt1170)
-elseif(CONFIG_BOARD_MIMXRT1160_EVK_CM7 OR CONFIG_BOARD_MIMXRT1160_EVK_CM4)
-  set(MCUX_BOARD evkmimxrt1160)
-endif()
-
-if (${MCUX_BOARD} MATCHES "evk[b]?[bm]imxrt1[0-9][0-9][0-9]")
-  list(APPEND CMAKE_MODULE_PATH
-    ${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/boards/${MCUX_BOARD}/xip
-  )
-  include_ifdef(CONFIG_BOOT_FLEXSPI_NOR driver_xip_board_${MCUX_BOARD}${MCUX_BOARD_MOD})
-  zephyr_library_sources_ifdef(CONFIG_DEVICE_CONFIGURATION_DATA mcux-sdk/boards/${MCUX_BOARD}/dcd.c)
-  zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/boards/${MCUX_BOARD})
-
-elseif (${MCUX_BOARD} MATCHES "evkmimxrt6[0-9][0-9]")
-
-  list(APPEND CMAKE_MODULE_PATH
-    ${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/boards/${MCUX_BOARD}/flash_config
-  )
-  include_ifdef(CONFIG_NXP_IMX_RT6XX_BOOT_HEADER    driver_flash_config)
-  zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/boards/${MCUX_BOARD})
-
-elseif (${MCUX_BOARD} MATCHES "evkmimxrt5[0-9][0-9]")
-
-  list(APPEND CMAKE_MODULE_PATH
-    ${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/boards/${MCUX_BOARD}/flash_config
-  )
-  include_ifdef(CONFIG_NXP_IMX_RT5XX_BOOT_HEADER    driver_flash_config)
-  zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/boards/${MCUX_BOARD})
-
-endif()
-
 if(CONFIG_ETH_MCUX)
   zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/components/phy)
   zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/components/phy/device/phyksz8081)
@@ -301,4 +252,23 @@ if (CONFIG_USB_DEVICE_DRIVER)
   zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/middleware/mcux-sdk-middleware-usb/device)
   zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/middleware/mcux-sdk-middleware-usb/phy)
   zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/middleware/mcux-sdk-middleware-usb/include)
+endif()
+
+if(CONFIG_ENTROPY_MCUX_CSS)
+  list(APPEND CMAKE_MODULE_PATH
+    ${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/components/css_pkc
+  )
+  zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/components/css_pkc/src/comps/mcuxClCss/inc)
+  zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/components/css_pkc/src/comps/mcuxCsslFlowProtection/inc)
+  zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/components/css_pkc/src/comps/mcuxCsslSecureCounter/inc)
+  zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/components/css_pkc/src/comps/mcuxCsslCPreProcessor/inc)
+  zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/components/css_pkc/src/comps/mcuxClMemory/inc)
+  zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/components/css_pkc/src/platforms)
+  zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/components/css_pkc/src/platforms/LPC55S3x/inc)
+  zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/components/css_pkc/src/compiler/iar)
+  zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/components/css_pkc/src/platforms/crypto_ip/inc/css/2.13.4)
+  zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/components/css_pkc/src/platforms/crypto_ip/inc/fame)
+  zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/components/css_pkc/src/comps/mcuxClKey/src)
+  zephyr_include_directories(${CMAKE_CURRENT_LIST_DIR}/mcux-sdk/components/css_pkc/src/comps/mcuxClSession/inc)
+  include(component_css)
 endif()

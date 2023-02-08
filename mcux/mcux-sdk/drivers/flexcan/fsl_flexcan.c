@@ -2894,7 +2894,7 @@ status_t FLEXCAN_WriteFDTxMb(CAN_Type *base, uint8_t mbIdx, const flexcan_fd_fra
             cs_temp |= CAN_CS_RTR_MASK;
         }
 
-        cs_temp |= CAN_CS_CODE(kFLEXCAN_TxMbDataOrRemote) | CAN_CS_DLC(pTxFrame->length) | CAN_CS_EDL(1) |
+        cs_temp |= CAN_CS_CODE(kFLEXCAN_TxMbDataOrRemote) | CAN_CS_DLC(pTxFrame->length) | CAN_CS_EDL(pTxFrame->edl) |
                    CAN_CS_BRS(pTxFrame->brs);
 
         /* Calculate the DWORD number, dataSize 0/1/2/3 corresponds to 8/16/32/64
@@ -3061,6 +3061,14 @@ status_t FLEXCAN_ReadFDRxMb(CAN_Type *base, uint8_t mbIdx, flexcan_fd_frame_t *p
         /* Get the message ID and format. */
         pRxFrame->format = (cs_temp & CAN_CS_IDE_MASK) != 0U ? (uint8_t)kFLEXCAN_FrameFormatExtend :
                                                                (uint8_t)kFLEXCAN_FrameFormatStandard;
+
+        /* Get Bit Rate Switch flag. */
+        pRxFrame->brs =
+            (cs_temp & CAN_CS_BRS_MASK) != 0U ? 1U : 0U;
+
+        /* Get Extended Data Length flag. */
+        pRxFrame->edl =
+            (cs_temp & CAN_CS_EDL_MASK) != 0U ? 1U : 0U;
 
         /* Get the message type. */
         pRxFrame->type =
@@ -4253,22 +4261,28 @@ static status_t FLEXCAN_SubHandlerForDataTransfered(CAN_Type *base, flexcan_hand
                     if (0U != (base->MCR & CAN_MCR_FDEN_MASK))
                     {
                         status = FLEXCAN_ReadFDRxMb(base, (uint8_t)result, handle->mbFDFrameBuf[result]);
-                        if (kStatus_Success == status)
+                        if (kStatus_Success == status || kStatus_FLEXCAN_RxOverflow == status)
                         {
                             /* Align the current index of RX MB timestamp to the timestamp array by handle. */
                             handle->timestamp[result] = handle->mbFDFrameBuf[result]->timestamp;
-                            status                    = kStatus_FLEXCAN_RxIdle;
+                            if (kStatus_Success == status)
+                            {
+                                status = kStatus_FLEXCAN_RxIdle;
+                            }
                         }
                     }
                     else
 #endif
                     {
                         status = FLEXCAN_ReadRxMb(base, (uint8_t)result, handle->mbFrameBuf[result]);
-                        if (kStatus_Success == status)
+                        if (kStatus_Success == status || kStatus_FLEXCAN_RxOverflow == status)
                         {
                             /* Align the current index of RX MB timestamp to the timestamp array by handle. */
                             handle->timestamp[result] = handle->mbFrameBuf[result]->timestamp;
-                            status                    = kStatus_FLEXCAN_RxIdle;
+                            if (kStatus_Success == status)
+                            {
+                                status = kStatus_FLEXCAN_RxIdle;
+                            }
                         }
                     }
 #if (defined(FSL_FEATURE_FLEXCAN_HAS_FLEXIBLE_DATA_RATE) && FSL_FEATURE_FLEXCAN_HAS_FLEXIBLE_DATA_RATE)
